@@ -13,13 +13,63 @@ form{display:flex;flex-wrap:wrap;gap:8px;width:100%}
 input[type=email]{flex:1 1 200px;min-width:0;border:1px solid #8a857e;padding:11px 12px;font:16px system-ui,sans-serif;background:var(--bg);color:var(--ink)}
 button{border:0;background:var(--ink);color:var(--bg);padding:12px 18px;font:600 16px system-ui,sans-serif;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid #1f5fa8;outline-offset:2px}
+.qc{width:100%;box-sizing:border-box;border:1px solid var(--line);padding:14px;display:grid;gap:10px}
+.qc h2{font-size:20px;margin:0}.qc .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.qc label{display:grid;gap:4px;font:600 15px system-ui,sans-serif}.qc input{border:1px solid #8a857e;padding:10px 12px;font:16px system-ui,sans-serif;background:var(--bg);color:var(--ink);min-width:0;width:100%;box-sizing:border-box}
+.qc .ans{font-size:22px;line-height:1.3;margin:0}.qc .bad{color:var(--rust)}.qc .ok{color:#2e6b3a}@media(prefers-color-scheme:dark){.qc .ok{color:#7fc58b}}
 footer{font-size:13px;color:var(--muted);max-width:44ch}
 </style></head><body><main>
 <img src="dale_porch.jpg" alt="Grandfather Dale on his porch">
 <h1>Dear neighbor, how many days would your house last?</h1>
-<p>I made a one evening test so you can find out. It is free. Tell me where to send it.</p>
+<p>I made a one evening test so you can find out. It is free.</p>
+<section class="qc" aria-labelledby="qct">
+<h2 id="qct">Try the quick check first. No email needed.</h2>
+<div class="g">
+<label>Adults and teens<input id="qa" type="number" min="0" value="2" inputmode="numeric"></label>
+<label>Children<input id="qk" type="number" min="0" value="2" inputmode="numeric"></label>
+<label>Drinking water stored (gallons)<input id="qw" type="number" min="0" value="12" inputmode="numeric"></label>
+<label>Meals of food that need no power<input id="qm" type="number" min="0" value="40" inputmode="numeric"></label>
+</div>
+<p class="ans" id="qr" aria-live="polite"></p>
+<p class="small">Count the jugs (a case of small bottles is about 3 gallons). A meal is one person eating once; count cans and dry food, not the fridge or freezer. Uses Ready.gov's one gallon of water per person per day (<a href="https://www.ready.gov/water">ready.gov/water</a>) and 3 meals a person a day (my guess). Fourteen days is my pick; Ready.gov says "several days". Nothing you type leaves this page. Not medical advice. Built with AI.</p>
+</section>
+<p>Want the one page plan to keep? Tell me where to send it.</p>
 <div class="kit"><script async data-uid="c16a81a946" src="https://grandfather-dale.kit.com/c16a81a946/index.js"></script></div>
 <p class="small">Your email stays on my porch. I send the page once, maybe a letter now and then.</p>
 <p class="sig">Dale</p>
-<footer>Grandfather Dale is an original AI character, not a real person or a safety expert. Facts come from Ready.gov and the American Red Cross, which do not endorse this page.</footer>
-</main></body></html>
+<footer>Grandfather Dale is an original AI character, not a real person or a safety expert. Facts come from Ready.gov and the American Red Cross, which do not endorse this page. The quick check was built with AI.</footer>
+</main>
+<script>
+
+function calc(i){
+  var n=function(x,d){x=parseFloat(x);return isNaN(x)?d:x};
+  var blank=function(x){return x===""||x==null||isNaN(parseFloat(x))};
+  var people=n(i.adults,0)+n(i.kids,0), dogs=n(i.dogs,0), cats=n(i.cats,0);
+  var T=Math.min(365,Math.max(1,Math.round(n(i.target,14))));
+  if(people<1) return {error:"Add at least one adult or child."};
+  var gpp=n(i.gpp,1), mpd=n(i.mpd,3), gd=n(i.gd,0), gc=n(i.gc,0), burn=n(i.burn,0), hrs=n(i.hrs,0), hpd=n(i.heatperday,0);
+  var haveW=n(i.water,0), haveM=n(i.meals,0);
+  var perDayW=people*gpp+dogs*gd+cats*gc, perDayM=people*mpd, rows=[];
+  rows.push({key:"water",name:"Drinking water",unit:"gallons",have:haveW,perDay:perDayW,days:haveW/perDayW,need:perDayW*T});
+  rows.push({key:"food",name:"Food that needs no power",unit:"meals",have:haveM,perDay:perDayM,days:haveM/perDayM,need:perDayM*T});
+  if(!blank(i.meds)) rows.push({key:"meds",name:"Prescription medicine",unit:"days",have:n(i.meds,0),perDay:1,days:n(i.meds,0),need:T});
+  if(!blank(i.fuel)&&burn>0&&hrs>0){var pf=burn*hrs;rows.push({key:"fuel",name:"Generator fuel",unit:"gallons",have:n(i.fuel,0),perDay:pf,days:n(i.fuel,0)/pf,need:pf*T});}
+  if(!blank(i.heat)&&hpd>0){rows.push({key:"heat",name:"Heat or cooking fuel",unit:(i.heatunit&&String(i.heatunit).trim())||"units",have:n(i.heat,0),perDay:hpd,days:n(i.heat,0)/hpd,need:hpd*T});}
+  rows.forEach(function(r){r.short=Math.max(0,Math.ceil(r.need-r.have-1e-9));r.frac=r.need>0?r.short/r.need:0;r.days=Math.round(r.days*10)/10;});
+  var last=rows.reduce(function(a,b){return b.days<a.days?b:a;});
+  var order=rows.slice().sort(function(a,b){return b.frac-a.frac||(a.key==="water"?-1:(b.key==="water"?1:0));}).filter(function(r){return r.short>0;});
+  var weeks=Math.min(26,Math.max(1,Math.ceil(T/7))), plan=[];
+  for(var w=0;w<weeks;w++){plan.push(order.map(function(r){var base=Math.floor(r.short/weeks),extra=(w<(r.short%weeks))?1:0,q=base+extra;return q>0?{name:r.name,qty:q,unit:r.unit}:null;}).filter(Boolean));}
+  var light=null; if(!blank(i.lights)){var hv=n(i.lights,0);light={have:hv,need:people,short:Math.max(0,people-hv)};}
+  return {people:people,T:T,perDayW:perDayW,perDayM:perDayM,rows:rows,last:last,lastDays:last.days,order:order,plan:plan,weeks:weeks,light:light,petNote:(dogs+cats>0&&gd===0&&gc===0),well:(i.source==="well")};
+}
+
+(function(){var $=function(i){return document.getElementById(i)},ids={qa:"adults",qk:"kids",qw:"water",qm:"meals"};
+function run(){var v={target:14,gpp:1,mpd:3};for(var k in ids)v[ids[k]]=$(k).value;var r=calc(v),o=$("qr");
+ if(r.error){o.className="ans bad";o.textContent=r.error;return}
+ var f=r.order[0],t="Your house lasts about "+r.lastDays+" days. The first thing to run out is "+r.last.name.toLowerCase()+".";
+ if(f)t+=" To reach 14 days you need "+f.short+" more "+f.unit+" of "+f.name.toLowerCase()+".";else t+=" You are covered for 14 days on water and food.";
+ o.className="ans "+(r.lastDays>=14?"ok":"bad");o.textContent=t}
+for(var k in ids)$(k).addEventListener("input",run);run()})();
+</script>
+</body></html>
